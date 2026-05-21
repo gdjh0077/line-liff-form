@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲帳號資料綁定</title>
+    <!-- 引入 Tailwind CSS 讓介面變漂亮 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- 引入 LINE LIFF SDK -->
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body class="bg-slate-900 text-white flex flex-col justify-between min-h-screen p-6">
+
+    <!-- 表單主要區塊 -->
+    <div class="max-w-md w-full mx-auto bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 my-auto">
+        <h2 class="text-2xl font-bold text-center mb-2 text-emerald-400">🎮 遊戲群帳號綁定</h2>
+        <p class="text-slate-400 text-sm text-center mb-6">填寫後即可在群組內使用指令查詢喔！</p>
+
+        <!-- 讀取中遮罩 -->
+        <div id="loading" class="text-center py-8">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-400 mx-auto mb-4"></div>
+            <p class="text-slate-400 text-sm">正在載入 LINE 使用者資訊...</p>
+        </div>
+
+        <!-- 實際表單（預設隱藏，等 LIFF 載入完才顯示） -->
+        <form id="bindingForm" class="hidden space-y-4">
+            <!-- LINE 資訊預覽 -->
+            <div class="bg-slate-950 p-3 rounded-lg flex items-center space-x-3 border border-slate-800">
+                <img id="userPicture" class="w-12 h-12 rounded-full border border-emerald-500 hidden" src="" alt="頭像">
+                <div>
+                    <p class="text-xs text-slate-500">LINE 暱稱</p>
+                    <p id="userName" class="font-medium text-slate-200">讀取中...</p>
+                </div>
+            </div>
+
+            <!-- 隱藏欄位：儲存 LINE userID -->
+            <input type="hidden" id="userId" name="userId">
+
+            <!-- 輸入欄位 1：遊戲名稱 -->
+            <div>
+                <label class="block text-sm font-medium text-slate-300 mb-1">遊戲內有名稱 (Game Name)</label>
+                <input type="text" id="gameName" required placeholder="請輸入您在遊戲中的精確名字"
+                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition">
+            </div>
+
+            <!-- 輸入欄位 2：職業選擇 -->
+            <div>
+                <label class="block text-sm font-medium text-slate-300 mb-1">主要職業 (Job / Class)</label>
+                <select id="job" required
+                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition">
+                    <option value="" disabled selected>-- 請選擇您的職業 --</option>
+                    <option value="戰士">⚔️ 戰士 (Warrior)</option>
+                    <option value="法師">🔮 法師 (Mage)</option>
+                    <option value="弓箭手">🏹 弓箭手 (Archer)</option>
+                    <option value="刺客">🗡️ 刺客 (Assassin)</option>
+                    <option value="聖騎士">🛡️ 聖騎士 (Paladin)</option>
+                </select>
+            </div>
+
+            <!-- 送出按鈕 -->
+            <button type="submit" id="submitBtn"
+                class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-emerald-500/20 mt-4 cursor-pointer">
+                確認綁定資料
+            </button>
+        </form>
+    </div>
+
+    <!-- 頁尾宣告 -->
+    <p class="text-center text-xs text-slate-600 mt-4">Powered by Render & GitHub Pages</p>
+
+    <!-- 網頁邏輯 JavaScript -->
+    <script>
+        // 📢 1. 請填入你之後在 LINE 後台申請的 LIFF ID
+        const MY_LIFF_ID = '填入你的_LIFF_ID'; 
+        
+        // 📢 2. 填入你上一幫架好的 Render 後端網址
+        const BACKEND_URL = 'https://my-linebot-backend.onrender.com/submit-form';
+
+        // 初始化 LINE LIFF
+        async function initLIFF() {
+            try {
+                await liff.init({ liffId: MY_LIFF_ID });
+                if (!liff.isLoggedIn()) {
+                    liff.login(); // 如果沒登入，強制引導登入 LINE
+                    return;
+                }
+                
+                // 成功登入後，撈取使用者資料
+                const profile = await liff.getProfile();
+                document.getElementById('userId').value = profile.userId;
+                document.getElementById('userName').innerText = profile.displayName;
+                if (profile.pictureUrl) {
+                    const img = document.getElementById('userPicture');
+                    img.src = profile.pictureUrl;
+                    img.classList.remove('hidden');
+                }
+
+                // 切換顯示狀態
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('bindingForm').classList.remove('hidden');
+
+            } catch (error) {
+                console.error("LIFF 初始化失敗:", error);
+                alert("無法載入 LINE 資訊，請在 LINE 應用程式內打開此網頁。");
+            }
+        }
+
+        // 監聽表單送出事件
+        document.getElementById('bindingForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = '資料傳送中...';
+
+            const payload = {
+                userId: document.getElementById('userId').value,
+                displayName: document.getElementById('userName').innerText,
+                gameName: document.getElementById('gameName').value,
+                job: document.getElementById('job').value
+            };
+
+            try {
+                // 將資料發送到你的 Python Render 後端
+                const response = await fetch(BACKEND_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    alert(result.message || "🎉 綁定成功！");
+                    liff.closeWindow(); // 成功後自動關閉 LINE 內建瀏覽器視窗
+                } else {
+                    alert(result.message || "❌ 綁定失敗，請稍後再試。");
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = '確認綁定資料';
+                }
+            } catch (err) {
+                console.error("傳送資料失敗:", err);
+                alert("伺服器連線失敗，請檢查網路或確認後端運作狀態。");
+                submitBtn.disabled = false;
+                submitBtn.innerText = '確認綁定資料';
+            }
+        });
+
+        // 網頁開啟時立刻執行
+        window.onload = initLIFF;
+    </script>
+</body>
+</html>
