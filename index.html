@@ -3,152 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>遊戲帳號資料綁定</title>
-    <!-- 引入 Tailwind CSS 讓介面變漂亮 -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- 引入 LINE LIFF SDK -->
+    <title>遊戲群帳號管理後台</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #1a1c23; color: #e2e8f0; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { background-color: #242631; padding: 25px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); width: 100%; max-width: 400px; }
+        h2 { text-align: center; color: #4ade80; margin-top: 0; }
+        .user-info { font-size: 14px; background: #2d3142; padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; color: #a0aec0; }
+        .role-card { background: #2d3142; padding: 15px; border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #4a5568; cursor: pointer; transition: 0.2s; }
+        .role-card:hover { border-color: #4ade80; background: #343a52; }
+        .btn { width: 100%; background-color: #10b981; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+        .btn:hover { background-color: #059669; }
+        .btn-secondary { background-color: #4b5563; }
+        .btn-secondary:hover { background-color: #374151; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 14px; color: #cbd5e1; }
+        input, select { width: 100%; padding: 10px; box-sizing: border-box; background-color: #1a1c23; border: 1px solid #4a5568; border-radius: 6px; color: white; font-size: 16px; }
+        input:focus, select:focus { border-color: #10b981; outline: none; }
+        .hidden { display: none; }
+        .loading { text-align: center; color: #10b981; font-weight: bold; padding: 20px; }
+    </style>
 </head>
-<body class="bg-slate-900 text-white flex flex-col justify-between min-h-screen p-6">
+<body>
 
-    <!-- 表單主要區塊 -->
-    <div class="max-w-md w-full mx-auto bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 my-auto">
-        <h2 class="text-2xl font-bold text-center mb-2 text-emerald-400">🎮 遊戲群帳號綁定</h2>
-        <p class="text-slate-400 text-sm text-center mb-6">填寫後即可在群組內使用指令查詢喔！</p>
+<div class="container">
+    <h2>🎮 角色管理後台</h2>
+    <div id="userInfo" class="user-info">LINE 暱稱: 載入中...</div>
 
-        <!-- 讀取中遮罩 -->
-        <div id="loading" class="text-center py-8">
-            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-400 mx-auto mb-4"></div>
-            <p class="text-slate-400 text-sm">正在載入 LINE 使用者資訊...</p>
-        </div>
+    <div id="loadingStatus" class="loading">正在讀取您的角色清單...</div>
 
-        <!-- 實際表單（預設隱藏，等 LIFF 載入完才顯示） -->
-        <form id="bindingForm" class="hidden space-y-4">
-            <!-- LINE 資訊預覽 -->
-            <div class="bg-slate-950 p-3 rounded-lg flex items-center space-x-3 border border-slate-800">
-                <img id="userPicture" class="w-12 h-12 rounded-full border border-emerald-500 hidden" src="" alt="頭像">
-                <div>
-                    <p class="text-xs text-slate-500">LINE 暱稱</p>
-                    <p id="userName" class="font-medium text-slate-200">讀取中...</p>
-                </div>
-            </div>
-
-            <!-- 隱藏欄位：儲存 LINE userID -->
-            <input type="hidden" id="userId" name="userId">
-
-            <!-- 輸入欄位 1：遊戲名稱 -->
-            <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">遊戲內有名稱 (Game Name)</label>
-                <input type="text" id="gameName" required placeholder="請輸入您在遊戲中的精確名字"
-                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition">
-            </div>
-
-            <!-- 輸入欄位 2：職業選擇 -->
-            <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">主要職業 (Job / Class)</label>
-                <select id="job" required
-                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 transition">
-                    <option value="" disabled selected>-- 請選擇您的職業 --</option>
-                    <option value="天工"> 天工</option>
-                    <option value="奇佐"> 奇佐</option>
-                    <option value="司倉"> 司倉</option>
-                    <option value="神行"> 神行</option>
-                    <option value="鎮軍"> 鎮軍</option>
-                    <option value="青囊"> 青囊</option>
-                </select>
-            </div>
-
-            <!-- 送出按鈕 -->
-            <button type="submit" id="submitBtn"
-                class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-emerald-500/20 mt-4 cursor-pointer">
-                確認綁定資料
-            </button>
-        </form>
+    <div id="listMode" class="hidden">
+        <p style="font-size: 14px; color: #a0aec0;">您目前已绑定的角色（點擊可直接修改）：</p>
+        <div id="roleList"></div>
+        <button class="btn" onclick="showFormMode('', '', '')">➕ 綁定全新分身</button>
     </div>
 
-    <!-- 頁尾宣告 -->
-    <p class="text-center text-xs text-slate-600 mt-4">Powered by Render & GitHub Pages</p>
-
-    <!-- 網頁邏輯 JavaScript -->
-    <script>
-        // 📢 1. 請填入你之後在 LINE 後台申請的 LIFF ID
-        const MY_LIFF_ID = '2010148079-embgIxoY'; 
+    <div id="formMode" class="hidden">
+        <h3 id="formTitle" style="color: #10b981; margin-top: 0;">新增角色</h3>
         
-        // 📢 2. 填入你上一幫架好的 Render 後端網址
-        const BACKEND_URL = 'https://my-linebot-backend.onrender.com/submit-form';
+        <div class="form-group">
+            <label>遊戲內名稱 (Game Name)</label>
+            <input type="text" id="gameName" placeholder="請輸入遊戲名字">
+        </div>
+        
+        <div class="form-group">
+            <label>主要職業 (Job / Class)</label>
+            <select id="job">
+                <option value="天工">天工</option>
+                <option value="司倉">司倉</option>
+                <option value="神射手">神射手</option>
+                <option value="聖騎士">聖騎士</option>
+            </select>
+        </div>
+        
+        <button class="btn" id="submitBtn" onclick="submitData()">確認送出</button>
+        <button class="btn btn-secondary" onclick="showListMode()">返回清單</button>
+    </div>
+</div>
 
-        // 初始化 LINE LIFF
-        async function initLIFF() {
-            try {
-                await liff.init({ liffId: MY_LIFF_ID });
-                if (!liff.isLoggedIn()) {
-                    liff.login(); // 如果沒登入，強制引導登入 LINE
-                    return;
-                }
-                
-                // 成功登入後，撈取使用者資料
-                const profile = await liff.getProfile();
-                document.getElementById('userId').value = profile.userId;
-                document.getElementById('userName').innerText = profile.displayName;
-                if (profile.pictureUrl) {
-                    const img = document.getElementById('userPicture');
-                    img.src = profile.pictureUrl;
-                    img.classList.remove('hidden');
-                }
+<script>
+    // 💡 務必換成你 Render 的主網址
+    const BACKEND_URL = 'https://my-linebot-backend.onrender.com'; 
+    
+    let profileData = { userId: '', displayName: '' };
+    let myRoles = [];
+    let editingOldName = ''; // 用來紀錄正在修改的角色舊名字
 
-                // 切換顯示狀態
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('bindingForm').classList.remove('hidden');
-
-            } catch (error) {
-                console.error("LIFF 初始化失敗:", error);
-                alert("無法載入 LINE 資訊，請在 LINE 應用程式內打開此網頁。");
+    async function initLIFF() {
+        try {
+            await liff.init({ liffId: "2010148079-embgIxoY" }); // 保持你的 LIFF ID
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return;
             }
-        }
-
-        // 監聽表單送出事件
-        document.getElementById('bindingForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+            const profile = await liff.getProfile();
+            profileData.userId = profile.userId;
+            profileData.displayName = profile.displayName;
             
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = true;
-            submitBtn.innerText = '資料傳送中...';
+            document.getElementById('userInfo').innerText = `LINE 暱稱: ${profile.displayName}`;
+            
+            // 載入完成，去後端拉取角色清單
+            await fetchUserRoles();
+        } catch (error) {
+            alert('LIFF 初始化失敗: ' + error);
+        }
+    }
 
-            const payload = {
-                userId: document.getElementById('userId').value,
-                displayName: document.getElementById('userName').innerText,
-                gameName: document.getElementById('gameName').value,
-                job: document.getElementById('job').value
-            };
-
-            try {
-                // 將資料發送到你的 Python Render 後端
-                const response = await fetch(BACKEND_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    alert(result.message || "🎉 綁定成功！");
-                    liff.closeWindow(); // 成功後自動關閉 LINE 內建瀏覽器視窗
+    async function fetchUserRoles() {
+        try {
+            const res = await fetch(`${BACKEND_URL}/get-user-roles`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: profileData.userId })
+            });
+            const data = await res.json();
+            document.getElementById('loadingStatus').classList.add('hidden');
+            
+            if (data.status === 'success') {
+                myRoles = data.roles;
+                if (myRoles.length === 0) {
+                    // 新用戶直接進表單模式
+                    showFormMode('', '', '');
                 } else {
-                    alert(result.message || "❌ 綁定失敗，請稍後再試。");
-                    submitBtn.disabled = false;
-                    submitBtn.innerText = '確認綁定資料';
+                    // 舊用戶顯示清單模式
+                    showListMode();
                 }
-            } catch (err) {
-                console.error("傳送資料失敗:", err);
-                alert("伺服器連線失敗，請檢查網路或確認後端運作狀態。");
-                submitBtn.disabled = false;
-                submitBtn.innerText = '確認綁定資料';
+            } else {
+                alert('讀取角色失敗: ' + data.message);
             }
-        });
+        } catch (e) {
+            alert('連線後端失敗: ' + e);
+        }
+    }
 
-        // 網頁開啟時立刻執行
-        window.onload = initLIFF;
-    </script>
+    function showListMode() {
+        document.getElementById('formMode').classList.add('hidden');
+        document.getElementById('listMode').classList.remove('hidden');
+        
+        const listDiv = document.getElementById('roleList');
+        listDiv.innerHTML = '';
+        
+        myRoles.forEach(role => {
+            const card = document.createElement('div');
+            card.className = 'role-card';
+            card.innerHTML = `<div><strong>${role.gameName}</strong><br><span style="font-size:12px; color:#a0aec0;">職業: ${role.job}</span></div><span style="color:#10b981; font-size:14px;">修改 ✏️</span>`;
+            card.onclick = () => showFormMode(role.gameName, role.job, role.gameName);
+            listDiv.appendChild(card);
+        });
+    }
+
+    function showFormMode(gameName, job, oldName) {
+        document.getElementById('listMode').classList.add('hidden');
+        document.getElementById('formMode').classList.remove('hidden');
+        
+        editingOldName = oldName; // 如果是空字串代表是全新新增；有值代表是修改
+        document.getElementById('formTitle').innerText = oldName ? `✏️ 修改角色 [${oldName}]` : '➕ 新增全新角色';
+        document.getElementById('gameName').value = gameName;
+        if(job) document.getElementById('job').value = job;
+    }
+
+    async function submitData() {
+        const gameName = document.getElementById('gameName').value.trim();
+        const job = document.getElementById('job').value;
+        
+        if (!gameName) {
+            alert('請填寫遊戲內名稱！');
+            return;
+        }
+        
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.innerText = '處理中...';
+        submitBtn.disabled = true;
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/submit-form`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: profileData.userId,
+                    displayName: profileData.displayName,
+                    gameName: gameName,
+                    job: job,
+                    oldGameName: editingOldName // 告訴後端這是從哪隻舊角色改過來的
+                })
+            });
+
+            const result = await response.json();
+            alert(result.message);
+
+            if (response.ok) {
+                // 重新刷新清單
+                document.getElementById('loadingStatus').classList.remove('hidden');
+                document.getElementById('listMode').classList.add('hidden');
+                document.getElementById('formMode').classList.add('hidden');
+                await fetchUserRoles();
+            }
+        } catch (error) {
+            alert('連線失敗: ' + error);
+        } finally {
+            submitBtn.innerText = '確認送出';
+            submitBtn.disabled = false;
+        }
+    }
+
+    window.onload = initLIFF;
+</script>
 </body>
 </html>
